@@ -4,20 +4,20 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 
-export default function TransportPage() {
+export default function StudentTransportPage() {
   const { data: session, status } = useSession();
+  const [studentTransports, setStudentTransports] = useState<any>([]);
   const [buses, setBuses] = useState<any>([]);
   const [students, setStudents] = useState<any>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<"bus" | "student">("bus");
-  const [editingBus, setEditingBus] = useState<any>(null);
+  const [editingStudentTransport, setEditingStudentTransport] =
+    useState<any>(null);
   const [formData, setFormData] = useState({
-    busNumber: "",
-    capacity: "",
-    driverName: "",
-    driverPhone: "",
-    route: "",
+    studentId: "",
+    busId: "",
+    startDate: "",
+    endDate: "",
     status: "active",
   });
 
@@ -29,14 +29,17 @@ export default function TransportPage() {
 
   const fetchData = async () => {
     try {
-      const [busesRes, studentsRes] = await Promise.all([
+      const [studentTransportsRes, busesRes, studentsRes] = await Promise.all([
+        fetch("/api/student-transport"),
         fetch("/api/transport"),
         fetch("/api/students"),
       ]);
 
+      const studentTransportsData = await studentTransportsRes.json();
       const busesData = await busesRes.json();
       const studentsData = await studentsRes.json();
 
+      setStudentTransports(studentTransportsData);
       setBuses(busesData);
       setStudents(studentsData);
     } catch (error) {
@@ -50,10 +53,10 @@ export default function TransportPage() {
     e.preventDefault();
 
     try {
-      const url = editingBus
-        ? `/api/transport/${editingBus.id}`
-        : "/api/transport";
-      const method = editingBus ? "PUT" : "POST";
+      const url = editingStudentTransport
+        ? `/api/student-transport/${editingStudentTransport.id}`
+        : "/api/student-transport";
+      const method = editingStudentTransport ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -66,49 +69,46 @@ export default function TransportPage() {
       if (response.ok) {
         await fetchData();
         setShowModal(false);
-        setEditingBus(null);
+        setEditingStudentTransport(null);
         setFormData({
-          busNumber: "",
-          capacity: "",
-          driverName: "",
-          driverPhone: "",
-          route: "",
+          studentId: "",
+          busId: "",
+          startDate: "",
+          endDate: "",
           status: "active",
         });
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to save bus");
+        alert(error.error || "Failed to save student transport record");
       }
     } catch (error) {
-      console.error("Error saving bus:", error);
-      alert("Failed to save bus");
+      console.error("Error saving student transport record:", error);
+      alert("Failed to save student transport record");
     }
   };
 
-  const handleEdit = (bus: any) => {
-    setEditingBus(bus);
+  const handleEdit = (studentTransport: any) => {
+    setEditingStudentTransport(studentTransport);
     setFormData({
-      busNumber: bus.busNumber,
-      capacity: bus.capacity.toString(),
-      driverName: bus.driverName,
-      driverPhone: bus.driverPhone || "",
-      route: bus.route,
-      status: bus.status,
+      studentId: studentTransport.studentId,
+      busId: studentTransport.busId,
+      startDate: studentTransport.startDate.split("T")[0],
+      endDate: studentTransport.endDate
+        ? studentTransport.endDate.split("T")[0]
+        : "",
+      status: studentTransport.status,
     });
-    setModalType("bus");
     setShowModal(true);
   };
 
   const handleDelete = async (id: string) => {
     if (
-      !confirm(
-        "Are you sure you want to delete this bus? This action cannot be undone."
-      )
+      !confirm("Are you sure you want to delete this student transport record?")
     )
       return;
 
     try {
-      const response = await fetch(`/api/transport/${id}`, {
+      const response = await fetch(`/api/student-transport/${id}`, {
         method: "DELETE",
       });
 
@@ -116,37 +116,34 @@ export default function TransportPage() {
         await fetchData();
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to delete bus");
+        alert(error.error || "Failed to delete student transport record");
       }
     } catch (error) {
-      console.error("Error deleting bus:", error);
-      alert("Failed to delete bus");
+      console.error("Error deleting student transport record:", error);
+      alert("Failed to delete student transport record");
     }
   };
 
-  const openBusModal = () => {
-    setEditingBus(null);
+  const openModal = () => {
+    setEditingStudentTransport(null);
     setFormData({
-      busNumber: "",
-      capacity: "",
-      driverName: "",
-      driverPhone: "",
-      route: "",
+      studentId: "",
+      busId: "",
+      startDate: "",
+      endDate: "",
       status: "active",
     });
-    setModalType("bus");
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
-    setEditingBus(null);
+    setEditingStudentTransport(null);
     setFormData({
-      busNumber: "",
-      capacity: "",
-      driverName: "",
-      driverPhone: "",
-      route: "",
+      studentId: "",
+      busId: "",
+      startDate: "",
+      endDate: "",
       status: "active",
     });
   };
@@ -155,8 +152,6 @@ export default function TransportPage() {
     switch (status) {
       case "active":
         return "bg-green-100 text-green-800";
-      case "maintenance":
-        return "bg-yellow-100 text-yellow-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -167,7 +162,9 @@ export default function TransportPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-lg text-gray-600">Loading transport...</p>
+          <p className="mt-4 text-lg text-gray-600">
+            Loading student transport...
+          </p>
         </div>
       </div>
     );
@@ -182,17 +179,17 @@ export default function TransportPage() {
       <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex justify-between items-center">
         <div>
           <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Transport Management
+            Student Transport
           </h3>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            Manage buses, routes, and student transportation.
+            Manage student transportation assignments.
           </p>
         </div>
         <button
-          onClick={openBusModal}
+          onClick={openModal}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
-          Add Bus
+          Add Student Transport
         </button>
       </div>
       <div className="border-t border-gray-200">
@@ -200,7 +197,7 @@ export default function TransportPage() {
           <div className="px-4 py-5 sm:px-6 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
             <p className="mt-4 text-lg text-gray-600">
-              Loading transport data...
+              Loading student transport records...
             </p>
           </div>
         ) : (
@@ -208,6 +205,12 @@ export default function TransportPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Student
+                  </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -224,25 +227,19 @@ export default function TransportPage() {
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Driver
+                    Start Date
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Capacity
+                    End Date
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
                     Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Students
                   </th>
                   <th
                     scope="col"
@@ -253,48 +250,52 @@ export default function TransportPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {buses.map((bus: any) => (
-                  <tr key={bus.id}>
+                {studentTransports.map((studentTransport: any) => (
+                  <tr key={studentTransport.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {bus.busNumber}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {bus.route}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {bus.driverName}
+                        {studentTransport.student.user.name}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {bus.driverPhone || "-"}
+                        {studentTransport.student.class.name}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {bus.capacity}
+                      {studentTransport.bus.busNumber}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {studentTransport.bus.route}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(
+                        studentTransport.startDate
+                      ).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {studentTransport.endDate
+                        ? new Date(
+                            studentTransport.endDate
+                          ).toLocaleDateString()
+                        : "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(
-                          bus.status
+                          studentTransport.status
                         )}`}
                       >
-                        {bus.status}
+                        {studentTransport.status}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {bus.studentTransport ? bus.studentTransport.length : 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => handleEdit(bus)}
+                        onClick={() => handleEdit(studentTransport)}
                         className="text-indigo-600 hover:text-indigo-900 mr-3"
                       >
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(bus.id)}
+                        onClick={() => handleDelete(studentTransport.id)}
                         className="text-red-600 hover:text-red-900"
                       >
                         Delete
@@ -304,14 +305,14 @@ export default function TransportPage() {
                 ))}
               </tbody>
             </table>
-            {buses.length === 0 && (
+            {studentTransports.length === 0 && (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">🚌</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No Buses Found
+                  No Student Transport Records Found
                 </h3>
                 <p className="text-gray-500">
-                  Get started by adding a new bus to the fleet.
+                  Get started by adding a new student transport record.
                 </p>
               </div>
             )}
@@ -320,12 +321,14 @@ export default function TransportPage() {
       </div>
 
       {/* Modal */}
-      {showModal && modalType === "bus" && (
+      {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg leading-6 font-medium text-gray-900">
-                {editingBus ? "Edit Bus" : "Add Bus"}
+                {editingStudentTransport
+                  ? "Edit Student Transport"
+                  : "Add Student Transport"}
               </h3>
             </div>
             <form onSubmit={handleSubmit}>
@@ -333,17 +336,65 @@ export default function TransportPage() {
                 <div className="space-y-4">
                   <div>
                     <label
-                      htmlFor="busNumber"
+                      htmlFor="studentId"
                       className="block text-sm font-medium text-gray-700"
                     >
-                      Bus Number
+                      Student
+                    </label>
+                    <select
+                      id="studentId"
+                      value={formData.studentId}
+                      onChange={(e) =>
+                        setFormData({ ...formData, studentId: e.target.value })
+                      }
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    >
+                      <option value="">Select a student</option>
+                      {students.map((student: any) => (
+                        <option key={student.id} value={student.id}>
+                          {student.user.name} ({student.class.name})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="busId"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Bus
+                    </label>
+                    <select
+                      id="busId"
+                      value={formData.busId}
+                      onChange={(e) =>
+                        setFormData({ ...formData, busId: e.target.value })
+                      }
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    >
+                      <option value="">Select a bus</option>
+                      {buses.map((bus: any) => (
+                        <option key={bus.id} value={bus.id}>
+                          {bus.busNumber} - {bus.route} ({bus.status})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="startDate"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Start Date
                     </label>
                     <input
-                      type="text"
-                      id="busNumber"
-                      value={formData.busNumber}
+                      type="date"
+                      id="startDate"
+                      value={formData.startDate}
                       onChange={(e) =>
-                        setFormData({ ...formData, busNumber: e.target.value })
+                        setFormData({ ...formData, startDate: e.target.value })
                       }
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       required
@@ -351,75 +402,17 @@ export default function TransportPage() {
                   </div>
                   <div>
                     <label
-                      htmlFor="route"
+                      htmlFor="endDate"
                       className="block text-sm font-medium text-gray-700"
                     >
-                      Route
+                      End Date
                     </label>
                     <input
-                      type="text"
-                      id="route"
-                      value={formData.route}
+                      type="date"
+                      id="endDate"
+                      value={formData.endDate}
                       onChange={(e) =>
-                        setFormData({ ...formData, route: e.target.value })
-                      }
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="capacity"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Capacity
-                    </label>
-                    <input
-                      type="number"
-                      id="capacity"
-                      value={formData.capacity}
-                      onChange={(e) =>
-                        setFormData({ ...formData, capacity: e.target.value })
-                      }
-                      min="1"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="driverName"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Driver Name
-                    </label>
-                    <input
-                      type="text"
-                      id="driverName"
-                      value={formData.driverName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, driverName: e.target.value })
-                      }
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="driverPhone"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Driver Phone
-                    </label>
-                    <input
-                      type="text"
-                      id="driverPhone"
-                      value={formData.driverPhone}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          driverPhone: e.target.value,
-                        })
+                        setFormData({ ...formData, endDate: e.target.value })
                       }
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
@@ -440,7 +433,6 @@ export default function TransportPage() {
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     >
                       <option value="active">Active</option>
-                      <option value="maintenance">Maintenance</option>
                       <option value="inactive">Inactive</option>
                     </select>
                   </div>
@@ -451,7 +443,7 @@ export default function TransportPage() {
                   type="submit"
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
                 >
-                  {editingBus ? "Update" : "Save"}
+                  {editingStudentTransport ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"

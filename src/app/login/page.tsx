@@ -86,6 +86,14 @@ export default function LoginPage() {
           transition={{ delay: 0.2, duration: 0.5 }}
           className="text-center"
         >
+          <motion.div
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+            className="mx-auto h-20 w-20 rounded-full bg-indigo-100 flex items-center justify-center"
+          >
+            <span className="text-4xl">🏫</span>
+          </motion.div>
           <motion.h2
             className="mt-6 text-center text-3xl font-extrabold text-gray-900"
             initial={{ scale: 0.9 }}
@@ -117,7 +125,27 @@ export default function LoginPage() {
                 animate={{ opacity: 1, x: 0 }}
                 className="rounded-md bg-red-50 p-4"
               >
-                <div className="text-sm text-red-700">{error}</div>
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-red-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">
+                      {error}
+                    </h3>
+                  </div>
+                </div>
               </motion.div>
             )}
 
@@ -138,6 +166,7 @@ export default function LoginPage() {
                   value={formData.email}
                   onChange={handleChange}
                   className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3"
+                  placeholder="Enter your email"
                 />
               </div>
             </div>
@@ -169,8 +198,24 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={handleChange}
                   className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3"
+                  placeholder="Enter your password"
                 />
               </div>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-600 border-gray-300 rounded"
+              />
+              <label
+                htmlFor="remember-me"
+                className="ml-2 block text-sm text-gray-900"
+              >
+                Remember me
+              </label>
             </div>
 
             <div>
@@ -228,7 +273,7 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="bg-white px-2 text-gray-500">
-                  Demo Credentials
+                  Or continue with
                 </span>
               </div>
             </div>
@@ -244,7 +289,7 @@ export default function LoginPage() {
                   }}
                   className="w-full inline-flex justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
                 >
-                  Admin
+                  <span className="text-indigo-600 font-medium">Admin</span>
                 </button>
               </div>
               <div>
@@ -257,11 +302,29 @@ export default function LoginPage() {
                   }}
                   className="w-full inline-flex justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
                 >
-                  Teacher
+                  <span className="text-indigo-600 font-medium">Teacher</span>
                 </button>
               </div>
             </div>
+
+            <div className="mt-6 text-center">
+              <p className="text-xs text-gray-500">
+                Use the demo credentials above to explore the system
+              </p>
+            </div>
           </motion.div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.9 }}
+          className="text-center text-sm text-gray-500"
+        >
+          <p>
+            © {new Date().getFullYear()} School Management System. All rights
+            reserved.
+          </p>
         </motion.div>
       </motion.div>
     </div>

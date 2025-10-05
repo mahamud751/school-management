@@ -5,11 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebarContext } from "@/context/SidebarContext";
+import { useState } from "react";
 
 export default function SidebarNavigation() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const { isCollapsed, toggleSidebar } = useSidebarContext();
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: "🏠" },
@@ -22,9 +24,32 @@ export default function SidebarNavigation() {
     { name: "Subjects", href: "/subjects", icon: "📖" },
     { name: "Results", href: "/results", icon: "📊" },
     { name: "Payments", href: "/payments", icon: "💳" },
-    { name: "Library", href: "/library", icon: "📚" },
-    { name: "Transport", href: "/transport", icon: "🚌" },
+    {
+      name: "Library",
+      href: "/library",
+      icon: "📚",
+      children: [
+        { name: "Books", href: "/library" },
+        { name: "Borrowings", href: "/library/borrowings" },
+      ],
+    },
+    {
+      name: "Transport",
+      href: "/transport",
+      icon: "🚌",
+      children: [
+        { name: "Buses", href: "/transport" },
+        { name: "Student Transport", href: "/transport/student-transport" },
+      ],
+    },
   ];
+
+  const toggleMenu = (name: string) => {
+    setOpenMenus((prev) => ({
+      ...prev,
+      [name]: !prev[name],
+    }));
+  };
 
   return (
     <AnimatePresence>
@@ -53,18 +78,65 @@ export default function SidebarNavigation() {
 
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  pathname === item.href
-                    ? "bg-indigo-600 text-white"
-                    : "text-indigo-100 hover:bg-indigo-600 hover:text-white"
-                }`}
-              >
-                <span className="text-lg">{item.icon}</span>
-                {!isCollapsed && <span className="ml-3">{item.name}</span>}
-              </Link>
+              <div key={item.name}>
+                {item.children ? (
+                  <>
+                    <button
+                      onClick={() => toggleMenu(item.name)}
+                      className={`flex items-center w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors justify-between ${
+                        pathname.startsWith(item.href)
+                          ? "bg-indigo-600 text-white"
+                          : "text-indigo-100 hover:bg-indigo-600 hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <span className="text-lg">{item.icon}</span>
+                        {!isCollapsed && (
+                          <span className="ml-3">{item.name}</span>
+                        )}
+                      </div>
+                      {!isCollapsed && (
+                        <span>{openMenus[item.name] ? "▲" : "▼"}</span>
+                      )}
+                    </button>
+                    {!isCollapsed && (
+                      <div
+                        className={`overflow-hidden transition-all duration-300 ${
+                          openMenus[item.name] ? "max-h-96" : "max-h-0"
+                        }`}
+                      >
+                        <div className="ml-4 mt-1 space-y-1">
+                          {item.children.map((child) => (
+                            <Link
+                              key={child.name}
+                              href={child.href}
+                              className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                pathname === child.href
+                                  ? "bg-indigo-500 text-white"
+                                  : "text-indigo-100 hover:bg-indigo-500 hover:text-white"
+                              }`}
+                            >
+                              <span className="ml-3">{child.name}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                      pathname === item.href
+                        ? "bg-indigo-600 text-white"
+                        : "text-indigo-100 hover:bg-indigo-600 hover:text-white"
+                    }`}
+                  >
+                    <span className="text-lg">{item.icon}</span>
+                    {!isCollapsed && <span className="ml-3">{item.name}</span>}
+                  </Link>
+                )}
+              </div>
             ))}
           </nav>
 

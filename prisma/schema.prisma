@@ -88,6 +88,8 @@ model Student {
   attendances Attendance[]
   results     Result[]
   fees        Fee[]
+  borrowings  Borrowing[]
+  transport   StudentTransport[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -277,4 +279,72 @@ model Enrollment {
   updatedAt   DateTime @updatedAt
 
   @@map("enrollments")
+}
+
+// Book model for library management
+model Book {
+  id            String       @id @default(cuid())
+  title         String
+  author        String
+  isbn          String?      @unique
+  category      String?
+  quantity      Int          @default(1)
+  available     Int          @default(1)
+  publisher     String?
+  publishedYear Int?
+  description   String?
+  borrowings    Borrowing[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("books")
+}
+
+// Borrowing model for library management
+model Borrowing {
+  id           String   @id @default(cuid())
+  book         Book     @relation(fields: [bookId], references: [id])
+  bookId       String
+  student      Student  @relation(fields: [studentId], references: [id])
+  studentId    String
+  borrowedDate DateTime @default(now())
+  dueDate      DateTime
+  returnedDate DateTime?
+  status       String   @default("borrowed") // borrowed, returned, overdue
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("borrowings")
+}
+
+// Bus model for transport management
+model Bus {
+  id          String          @id @default(cuid())
+  busNumber   String          @unique
+  capacity    Int
+  driverName  String
+  driverPhone String?
+  route       String
+  status      String          @default("active") // active, inactive, maintenance
+  studentTransport StudentTransport[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("buses")
+}
+
+// StudentTransport model for transport management
+model StudentTransport {
+  id          String   @id @default(cuid())
+  student     Student  @relation(fields: [studentId], references: [id])
+  studentId   String
+  bus         Bus      @relation(fields: [busId], references: [id])
+  busId       String
+  startDate   DateTime
+  endDate     DateTime?
+  status      String   @default("active") // active, inactive
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("student_transport")
 }

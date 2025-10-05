@@ -4,21 +4,20 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 
-export default function TransportPage() {
+export default function BorrowingsPage() {
   const { data: session, status } = useSession();
-  const [buses, setBuses] = useState<any>([]);
+  const [borrowings, setBorrowings] = useState<any>([]);
+  const [books, setBooks] = useState<any>([]);
   const [students, setStudents] = useState<any>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<"bus" | "student">("bus");
-  const [editingBus, setEditingBus] = useState<any>(null);
+  const [editingBorrowing, setEditingBorrowing] = useState<any>(null);
   const [formData, setFormData] = useState({
-    busNumber: "",
-    capacity: "",
-    driverName: "",
-    driverPhone: "",
-    route: "",
-    status: "active",
+    bookId: "",
+    studentId: "",
+    dueDate: "",
+    returnedDate: "",
+    status: "borrowed",
   });
 
   useEffect(() => {
@@ -29,15 +28,18 @@ export default function TransportPage() {
 
   const fetchData = async () => {
     try {
-      const [busesRes, studentsRes] = await Promise.all([
-        fetch("/api/transport"),
+      const [borrowingsRes, booksRes, studentsRes] = await Promise.all([
+        fetch("/api/borrowings"),
+        fetch("/api/library"),
         fetch("/api/students"),
       ]);
 
-      const busesData = await busesRes.json();
+      const borrowingsData = await borrowingsRes.json();
+      const booksData = await booksRes.json();
       const studentsData = await studentsRes.json();
 
-      setBuses(busesData);
+      setBorrowings(borrowingsData);
+      setBooks(booksData);
       setStudents(studentsData);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -50,10 +52,10 @@ export default function TransportPage() {
     e.preventDefault();
 
     try {
-      const url = editingBus
-        ? `/api/transport/${editingBus.id}`
-        : "/api/transport";
-      const method = editingBus ? "PUT" : "POST";
+      const url = editingBorrowing
+        ? `/api/borrowings/${editingBorrowing.id}`
+        : "/api/borrowings";
+      const method = editingBorrowing ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -66,49 +68,44 @@ export default function TransportPage() {
       if (response.ok) {
         await fetchData();
         setShowModal(false);
-        setEditingBus(null);
+        setEditingBorrowing(null);
         setFormData({
-          busNumber: "",
-          capacity: "",
-          driverName: "",
-          driverPhone: "",
-          route: "",
-          status: "active",
+          bookId: "",
+          studentId: "",
+          dueDate: "",
+          returnedDate: "",
+          status: "borrowed",
         });
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to save bus");
+        alert(error.error || "Failed to save borrowing record");
       }
     } catch (error) {
-      console.error("Error saving bus:", error);
-      alert("Failed to save bus");
+      console.error("Error saving borrowing record:", error);
+      alert("Failed to save borrowing record");
     }
   };
 
-  const handleEdit = (bus: any) => {
-    setEditingBus(bus);
+  const handleEdit = (borrowing: any) => {
+    setEditingBorrowing(borrowing);
     setFormData({
-      busNumber: bus.busNumber,
-      capacity: bus.capacity.toString(),
-      driverName: bus.driverName,
-      driverPhone: bus.driverPhone || "",
-      route: bus.route,
-      status: bus.status,
+      bookId: borrowing.bookId,
+      studentId: borrowing.studentId,
+      dueDate: borrowing.dueDate.split("T")[0],
+      returnedDate: borrowing.returnedDate
+        ? borrowing.returnedDate.split("T")[0]
+        : "",
+      status: borrowing.status,
     });
-    setModalType("bus");
     setShowModal(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this bus? This action cannot be undone."
-      )
-    )
+    if (!confirm("Are you sure you want to delete this borrowing record?"))
       return;
 
     try {
-      const response = await fetch(`/api/transport/${id}`, {
+      const response = await fetch(`/api/borrowings/${id}`, {
         method: "DELETE",
       });
 
@@ -116,50 +113,54 @@ export default function TransportPage() {
         await fetchData();
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to delete bus");
+        alert(error.error || "Failed to delete borrowing record");
       }
     } catch (error) {
-      console.error("Error deleting bus:", error);
-      alert("Failed to delete bus");
+      console.error("Error deleting borrowing record:", error);
+      alert("Failed to delete borrowing record");
     }
   };
 
-  const openBusModal = () => {
-    setEditingBus(null);
+  const openModal = () => {
+    setEditingBorrowing(null);
     setFormData({
-      busNumber: "",
-      capacity: "",
-      driverName: "",
-      driverPhone: "",
-      route: "",
-      status: "active",
+      bookId: "",
+      studentId: "",
+      dueDate: "",
+      returnedDate: "",
+      status: "borrowed",
     });
-    setModalType("bus");
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
-    setEditingBus(null);
+    setEditingBorrowing(null);
     setFormData({
-      busNumber: "",
-      capacity: "",
-      driverName: "",
-      driverPhone: "",
-      route: "",
-      status: "active",
+      bookId: "",
+      studentId: "",
+      dueDate: "",
+      returnedDate: "",
+      status: "borrowed",
     });
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
+      case "returned":
         return "bg-green-100 text-green-800";
-      case "maintenance":
-        return "bg-yellow-100 text-yellow-800";
+      case "overdue":
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-yellow-100 text-yellow-800";
     }
+  };
+
+  const isOverdue = (dueDate: string, status: string) => {
+    if (status === "returned") return false;
+    const today = new Date();
+    const due = new Date(dueDate);
+    return due < today;
   };
 
   if (status === "loading") {
@@ -167,7 +168,7 @@ export default function TransportPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-lg text-gray-600">Loading transport...</p>
+          <p className="mt-4 text-lg text-gray-600">Loading borrowings...</p>
         </div>
       </div>
     );
@@ -182,26 +183,24 @@ export default function TransportPage() {
       <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex justify-between items-center">
         <div>
           <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Transport Management
+            Book Borrowings
           </h3>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            Manage buses, routes, and student transportation.
+            Manage book borrowing and returns.
           </p>
         </div>
         <button
-          onClick={openBusModal}
+          onClick={openModal}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
-          Add Bus
+          Add Borrowing
         </button>
       </div>
       <div className="border-t border-gray-200">
         {loading ? (
           <div className="px-4 py-5 sm:px-6 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-lg text-gray-600">
-              Loading transport data...
-            </p>
+            <p className="mt-4 text-lg text-gray-600">Loading borrowings...</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -212,37 +211,37 @@ export default function TransportPage() {
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Bus Number
+                    Book
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Route
+                    Student
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Driver
+                    Borrowed Date
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Capacity
+                    Due Date
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Returned Date
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
                     Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Students
                   </th>
                   <th
                     scope="col"
@@ -253,48 +252,57 @@ export default function TransportPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {buses.map((bus: any) => (
-                  <tr key={bus.id}>
+                {borrowings.map((borrowing: any) => (
+                  <tr key={borrowing.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {bus.busNumber}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {bus.route}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {bus.driverName}
+                        {borrowing.book.title}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {bus.driverPhone || "-"}
+                        {borrowing.book.author}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {borrowing.student.user.name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {borrowing.student.class.name}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {bus.capacity}
+                      {new Date(borrowing.borrowedDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(borrowing.dueDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {borrowing.returnedDate
+                        ? new Date(borrowing.returnedDate).toLocaleDateString()
+                        : "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(
-                          bus.status
+                          isOverdue(borrowing.dueDate, borrowing.status)
+                            ? "overdue"
+                            : borrowing.status
                         )}`}
                       >
-                        {bus.status}
+                        {isOverdue(borrowing.dueDate, borrowing.status)
+                          ? "Overdue"
+                          : borrowing.status}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {bus.studentTransport ? bus.studentTransport.length : 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => handleEdit(bus)}
+                        onClick={() => handleEdit(borrowing)}
                         className="text-indigo-600 hover:text-indigo-900 mr-3"
                       >
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(bus.id)}
+                        onClick={() => handleDelete(borrowing.id)}
                         className="text-red-600 hover:text-red-900"
                       >
                         Delete
@@ -304,14 +312,14 @@ export default function TransportPage() {
                 ))}
               </tbody>
             </table>
-            {buses.length === 0 && (
+            {borrowings.length === 0 && (
               <div className="text-center py-12">
-                <div className="text-6xl mb-4">🚌</div>
+                <div className="text-6xl mb-4">📚</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No Buses Found
+                  No Borrowings Found
                 </h3>
                 <p className="text-gray-500">
-                  Get started by adding a new bus to the fleet.
+                  Get started by adding a new borrowing record.
                 </p>
               </div>
             )}
@@ -320,12 +328,12 @@ export default function TransportPage() {
       </div>
 
       {/* Modal */}
-      {showModal && modalType === "bus" && (
+      {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg leading-6 font-medium text-gray-900">
-                {editingBus ? "Edit Bus" : "Add Bus"}
+                {editingBorrowing ? "Edit Borrowing" : "Add Borrowing"}
               </h3>
             </div>
             <form onSubmit={handleSubmit}>
@@ -333,117 +341,114 @@ export default function TransportPage() {
                 <div className="space-y-4">
                   <div>
                     <label
-                      htmlFor="busNumber"
+                      htmlFor="bookId"
                       className="block text-sm font-medium text-gray-700"
                     >
-                      Bus Number
-                    </label>
-                    <input
-                      type="text"
-                      id="busNumber"
-                      value={formData.busNumber}
-                      onChange={(e) =>
-                        setFormData({ ...formData, busNumber: e.target.value })
-                      }
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="route"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Route
-                    </label>
-                    <input
-                      type="text"
-                      id="route"
-                      value={formData.route}
-                      onChange={(e) =>
-                        setFormData({ ...formData, route: e.target.value })
-                      }
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="capacity"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Capacity
-                    </label>
-                    <input
-                      type="number"
-                      id="capacity"
-                      value={formData.capacity}
-                      onChange={(e) =>
-                        setFormData({ ...formData, capacity: e.target.value })
-                      }
-                      min="1"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="driverName"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Driver Name
-                    </label>
-                    <input
-                      type="text"
-                      id="driverName"
-                      value={formData.driverName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, driverName: e.target.value })
-                      }
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="driverPhone"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Driver Phone
-                    </label>
-                    <input
-                      type="text"
-                      id="driverPhone"
-                      value={formData.driverPhone}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          driverPhone: e.target.value,
-                        })
-                      }
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="status"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Status
+                      Book
                     </label>
                     <select
-                      id="status"
-                      value={formData.status}
+                      id="bookId"
+                      value={formData.bookId}
                       onChange={(e) =>
-                        setFormData({ ...formData, status: e.target.value })
+                        setFormData({ ...formData, bookId: e.target.value })
                       }
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
                     >
-                      <option value="active">Active</option>
-                      <option value="maintenance">Maintenance</option>
-                      <option value="inactive">Inactive</option>
+                      <option value="">Select a book</option>
+                      {books.map((book: any) => (
+                        <option key={book.id} value={book.id}>
+                          {book.title} by {book.author} ({book.available}{" "}
+                          available)
+                        </option>
+                      ))}
                     </select>
                   </div>
+                  <div>
+                    <label
+                      htmlFor="studentId"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Student
+                    </label>
+                    <select
+                      id="studentId"
+                      value={formData.studentId}
+                      onChange={(e) =>
+                        setFormData({ ...formData, studentId: e.target.value })
+                      }
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    >
+                      <option value="">Select a student</option>
+                      {students.map((student: any) => (
+                        <option key={student.id} value={student.id}>
+                          {student.user.name} ({student.class.name})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="dueDate"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Due Date
+                    </label>
+                    <input
+                      type="date"
+                      id="dueDate"
+                      value={formData.dueDate}
+                      onChange={(e) =>
+                        setFormData({ ...formData, dueDate: e.target.value })
+                      }
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    />
+                  </div>
+                  {editingBorrowing && (
+                    <>
+                      <div>
+                        <label
+                          htmlFor="returnedDate"
+                          className="block text-sm font-medium text-gray-700"
+                        >
+                          Returned Date
+                        </label>
+                        <input
+                          type="date"
+                          id="returnedDate"
+                          value={formData.returnedDate}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              returnedDate: e.target.value,
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="status"
+                          className="block text-sm font-medium text-gray-700"
+                        >
+                          Status
+                        </label>
+                        <select
+                          id="status"
+                          value={formData.status}
+                          onChange={(e) =>
+                            setFormData({ ...formData, status: e.target.value })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        >
+                          <option value="borrowed">Borrowed</option>
+                          <option value="returned">Returned</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200">
@@ -451,7 +456,7 @@ export default function TransportPage() {
                   type="submit"
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
                 >
-                  {editingBus ? "Update" : "Save"}
+                  {editingBorrowing ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"

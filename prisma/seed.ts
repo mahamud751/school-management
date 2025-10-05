@@ -24,6 +24,27 @@ async function main() {
 
   console.log("Created admin user:", adminUser);
 
+  // Create teacher user
+  const teacherHashedPassword = await hashPassword("teacher123");
+
+  const teacherUser = await prisma.user.create({
+    data: {
+      email: "teacher@school.com",
+      password: teacherHashedPassword,
+      name: "Teacher User",
+      role: "TEACHER",
+    },
+  });
+
+  const teacher = await prisma.teacher.create({
+    data: {
+      userId: teacherUser.id,
+      employeeId: "EMP001",
+    },
+  });
+
+  console.log("Created teacher user:", teacherUser);
+
   // Create sample classes
   const class1 = await prisma.class.create({
     data: {
