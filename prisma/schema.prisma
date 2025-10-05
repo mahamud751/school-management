@@ -1,0 +1,280 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication (Admin, Teacher, Student, Parent)
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  password       String
+  role           Role      @default(STUDENT)
+  name           String
+  phone          String?
+  address        String?
+  dateOfBirth    DateTime?
+  profilePicture String?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  admin        Admin?
+  teacher      Teacher?
+  student      Student?
+  parent       Parent?
+  notifications Notification[]
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+// Admin model
+model Admin {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admins")
+}
+
+// Teacher model
+model Teacher {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id])
+  employeeId String   @unique
+  subjects   Subject[]
+  classes    Class[]  @relation("TeacherClasses")
+  attendances Attendance[] @relation("TeacherAttendances")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("teachers")
+}
+
+// Student model
+model Student {
+  id          String     @id @default(cuid())
+  userId      String     @unique
+  user        User       @relation(fields: [userId], references: [id])
+  studentId   String     @unique
+  rollNumber  Int
+  class       Class      @relation(fields: [classId], references: [id])
+  classId     String
+  section     Section    @relation(fields: [sectionId], references: [id])
+  sectionId   String
+  parent      Parent?    @relation(fields: [parentId], references: [id])
+  parentId    String?
+  enrollments Enrollment[]
+  attendances Attendance[]
+  results     Result[]
+  fees        Fee[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("students")
+}
+
+// Parent model
+model Parent {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id])
+  students  Student[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("parents")
+}
+
+// Class model
+model Class {
+  id         String     @id @default(cuid())
+  name       String
+  level      String
+  sections   Section[]
+  students   Student[]
+  subjects   ClassSubject[]
+  teachers   Teacher[]  @relation("TeacherClasses")
+  attendances Attendance[]
+  exams      Exam[]
+  enrollments Enrollment[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@map("classes")
+}
+
+// Section model
+model Section {
+  id        String    @id @default(cuid())
+  name      String
+  class     Class     @relation(fields: [classId], references: [id])
+  classId   String
+  students  Student[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("sections")
+}
+
+// Subject model
+model Subject {
+  id          String        @id @default(cuid())
+  name        String
+  code        String        @unique
+  description String?
+  teachers    Teacher[]
+  classes     ClassSubject[]
+  attendances Attendance[]
+  exams       Exam[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("subjects")
+}
+
+// Class-Subject relation (many-to-many)
+model ClassSubject {
+  id        String   @id @default(cuid())
+  class     Class    @relation(fields: [classId], references: [id])
+  classId   String
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  subjectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([classId, subjectId])
+  @@map("class_subjects")
+}
+
+// Attendance model
+model Attendance {
+  id          String   @id @default(cuid())
+  date        DateTime
+  status      AttendanceStatus
+  student     Student  @relation(fields: [studentId], references: [id])
+  studentId   String
+  class       Class    @relation(fields: [classId], references: [id])
+  classId     String
+  subject     Subject? @relation(fields: [subjectId], references: [id])
+  subjectId   String?
+  takenBy     Teacher  @relation("TeacherAttendances", fields: [teacherId], references: [id])
+  teacherId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("attendances")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+// Exam model
+model Exam {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  class       Class    @relation(fields: [classId], references: [id])
+  classId     String
+  subject     Subject  @relation(fields: [subjectId], references: [id])
+  subjectId   String
+  maxMarks    Int
+  results     Result[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("exams")
+}
+
+// Result model
+model Result {
+  id         String   @id @default(cuid())
+  student    Student  @relation(fields: [studentId], references: [id])
+  studentId  String
+  exam       Exam     @relation(fields: [examId], references: [id])
+  examId     String
+  marks      Float
+  grade      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("results")
+}
+
+// Fee model
+model Fee {
+  id          String   @id @default(cuid())
+  student     Student  @relation(fields: [studentId], references: [id])
+  studentId   String
+  amount      Float
+  dueDate     DateTime
+  paidDate    DateTime?
+  status      FeeStatus
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("fees")
+}
+
+enum FeeStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+// Notification model
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
+}
+
+// Enrollment model
+model Enrollment {
+  id          String   @id @default(cuid())
+  student     Student  @relation(fields: [studentId], references: [id])
+  studentId   String
+  class       Class    @relation(fields: [classId], references: [id])
+  classId     String
+  startDate   DateTime
+  endDate     DateTime?
+  status      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("enrollments")
+}
